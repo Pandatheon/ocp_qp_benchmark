@@ -61,17 +61,17 @@ def main():
 
     ## Create solver set ##
     # sepcify sovlers and corresponding options to be evaluated
-    designated_solver_dict = (
-        {'PARTIAL_CONDENSING_OSQP': {}},
-        {'PARTIAL_CONDENSING_HPIPM': {}},
-        {'PARTIAL_CONDENSING_HPIPM': {'iter_max': 500}},
-        {'PARTIAL_CONDENSING_CLARABEL': {}},
-        {'FULL_CONDENSING_QPOASES': {}},
-        {'FULL_CONDENSING_HPIPM': {}},
-        {'FULL_CONDENSING_DAQP': {}},
-    ) # {} indicates default options for each solver
+    designated_solver_list = [
+        ('PARTIAL_CONDENSING_OSQP', {}),
+        ('PARTIAL_CONDENSING_HPIPM', {}),
+        ('PARTIAL_CONDENSING_HPIPM', {'iter_max': 500}),
+        ('PARTIAL_CONDENSING_CLARABEL', {}),
+        ('FULL_CONDENSING_QPOASES', {}),
+        ('FULL_CONDENSING_HPIPM', {}),
+        ('FULL_CONDENSING_DAQP', {}),
+    ] # {} indicates default options for each solver
     # Generate labels based on differing options
-    solver_set = SolverSet(solver_dicts = designated_solver_dict)
+    solver_set = SolverSet(solver_list = designated_solver_list)
 
     ## Create Results logger ##
     results = Result(file_path=RESULT_PATH, test_set=test_set)
