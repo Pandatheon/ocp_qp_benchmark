@@ -5,7 +5,7 @@ import os
 
 from acados_template import AcadosOcpQpOptions
 
-from ocp_qp_benchmark.core import TestSet, SolverSet, Result, run
+from ocp_qp_benchmark.core import TestSet, SolverSet, Results, run
 from ocp_qp_benchmark.core.supported_solvers import (
     ACADOS_OCP_QP_SOLVERS,
     ACADOS_CASADI_SOLVERS,
@@ -110,7 +110,7 @@ def main():
     solver_set = SolverSet(solver_list = designated_solver_list)
 
     ## Create Results logger ##
-    results = Result(file_path=RESULT_PATH, test_set=test_set)
+    results = Results(file_path=RESULT_PATH, test_set=test_set)
 
     ## Run benchmark ##
     run(
@@ -143,7 +143,7 @@ def main():
     # filter solver_ids based on specified eval_solver_name
     eval_solver_ids = solver_set.get_solver_ids_by_names(eval_solver_names)
 
-    results = Result(file_path=RESULT_PATH, test_set=test_set)
+    results = Results(file_path=RESULT_PATH, test_set=test_set)
     plot_metric(
         metric="runtime_fair",
         df=results.df,

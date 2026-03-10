@@ -9,7 +9,7 @@ import pandas
 from ocp_qp_benchmark.core.test_set import TestSet
 
 
-class Result:
+class Results:
     """
     Log Test set results into csv file or parquet file.
 
@@ -82,7 +82,7 @@ class Result:
 
         if file_path is not None:
             file_path = Path(file_path)
-            df_from_file = Result.read_from_file(file_path)
+            df_from_file = Results.read_from_file(file_path)
             if df_from_file is not None:
                 df = pandas.concat([df, df_from_file])
             else:
