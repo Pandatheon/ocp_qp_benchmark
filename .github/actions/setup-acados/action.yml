@@ -14,8 +14,15 @@ runs:
       id: get-run-id
       env:
         GH_TOKEN: ${{ github.token }}
+      shell: bash
       run: |
-        RUN_ID=$(gh run list --repo acados/acados --workflow full_build.yml --branch master --status success --limit 1 --json databaseId --jq '.[0].databaseId')
+        RUN_ID=$(gh run list --repo acados/acados 
+                             --workflow full_build.yml 
+                             --branch main 
+                             --status success 
+                             --limit 1 
+                             --json databaseId 
+                             --jq '.[0].databaseId')
         echo "run_id=$RUN_ID" >> $GITHUB_OUTPUT
 
     - name: Download latest acados artifacts
