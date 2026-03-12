@@ -50,7 +50,7 @@ def get_problems(test_subset_path) -> list[str]:
 
     designated_problems = []
     for test_subset in test_subset_path:
-        problems = [os.path.join(test_subset, f) for f in os.listdir(test_subset)]
+        problems = [os.path.join(ocp_dataset_path, test_subset, f) for f in os.listdir(os.path.join(ocp_dataset_path, test_subset))]
         designated_problems.extend(problems)
     return designated_problems
 

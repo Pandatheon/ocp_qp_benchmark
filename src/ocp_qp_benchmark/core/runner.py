@@ -58,7 +58,7 @@ def solve_problem(
                 casadi_opts = solver_opts.copy()
                 casadi_opts.pop('qp_solver')
                 qp_solver = AcadosCasadiOcpQpSolver(qp,
-                                                    solver=solver_opts.get('qp_solver').lower(), 
+                                                    solver=solver_opts.get('qp_solver').lower(),
                                                     solver_opts=casadi_opts)
             elif solver_opts.get('qp_solver') in EXTERNAL_SOLVERS:
                 raise NotImplementedError(f"External solvers not implemented yet")

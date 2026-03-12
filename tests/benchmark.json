@@ -1,7 +1,7 @@
 {
 
     "test_setting":[
-        "ocp_qp_dataset_collection/random_qp"
+        "random_qp"
     ],
 
     "test_filter_setting": [
