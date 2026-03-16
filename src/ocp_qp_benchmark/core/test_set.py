@@ -3,7 +3,7 @@
 import os
 from typing import Any, Callable, Dict
 
-from ocp_qp_benchmark.utils.io import load_meta_data
+from ocp_qp_benchmark.utils.io import load_data
 
 
 class TestSet:
@@ -73,15 +73,13 @@ class TestSet:
             return self.qp_folder_paths
         target_conditions = {k: v for opt in opts for k, v in opt.items()}
         filtered_paths = []
-        for path in self.qp_folder_paths:
-            if not os.path.isdir(path):
-                continue
-            meta_data = load_meta_data(path)
+        for path in self:
+            meta_data = load_data(path['meta_data_path'])
             is_fully_matched = all(
                 meta_data.get(k) == v for k, v in target_conditions.items()
             )
             if is_fully_matched:
-                filtered_paths.append(path)
+                filtered_paths.append(os.path.dirname(path['meta_data_path']))
         self.qp_folder_paths = filtered_paths
         if verbose:
             print("Filtered QP problems:")

@@ -7,12 +7,12 @@ import numpy as np
 from tqdm import tqdm
 from typing import Union
 
-from acados_template import AcadosOcpQp, AcadosOcpQpSolver, AcadosCasadiOcpQpSolver, AcadosOcpQpOptions
+from acados_template import AcadosOcpQp, AcadosOcpQpSolver, AcadosCasadiOcpQpSolver, AcadosOcpQpOptions, AcadosOcpIterate
 
 from ocp_qp_benchmark.core.test_set import TestSet
 from ocp_qp_benchmark.core.solver_set import SolverSet
 from ocp_qp_benchmark.core.results import Results
-
+from ocp_qp_benchmark.utils.io import load_data
 from ocp_qp_benchmark.core.supported_solvers import (
     ACADOS_OCP_QP_SOLVERS,
     ACADOS_CASADI_SOLVERS,
@@ -92,6 +92,7 @@ def solve_problem(
             )
         else:
             runtime_fair = runtime_external
+        solver_sol = qp_solver.get_iterate()
         # TODO: reset() needed
         qp_solver = None
 
@@ -103,13 +104,14 @@ def solve_problem(
     # TODO: get_cost() needs to be called after solve()
     ctx["cost"] = 0.0
 
-    return ctx
+    return ctx, solver_sol
 
 
 def run(
     test_set: TestSet,
     solver_set: SolverSet,
     results: Results,
+    compare_sol: bool = True,
     print_level: int = 1,
 ) -> None:
     """Run a given test set and store results.
@@ -141,7 +143,16 @@ def run(
                     f"Solving problem {json_path_dict['qp_data_path']} "
                     f"with solver {solver_id}"
                 )
-            ctx = solve_problem(qp, opts, print_level=print_level - 1)
+            ctx, solver_sol = solve_problem(qp, opts, print_level=print_level - 1)
+
+            if compare_sol:
+                import os
+                if os.path.exists(json_path_dict["ref_sol_path"]):
+                    ref_sol = AcadosOcpIterate.from_json(json_path_dict["ref_sol_path"])
+                    ref_sol.allclose(solver_sol)
+                else:
+                    print(f"!!!!Reference solution not found at {json_path_dict['ref_sol_path']}!!!!")
+
             results.update(
                 json_path_dict["meta_data_path"],
                 solver_id,

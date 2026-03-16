@@ -54,7 +54,7 @@ def get_problems(test_subset_path) -> list[str]:
         designated_problems.extend(problems)
     return designated_problems
 
-def main(config_json: dict):
+def main(config_json: dict = None):
     """
     OCP QP Benchmark main file
     Also a example for setting up benchmark
@@ -63,10 +63,14 @@ def main(config_json: dict):
     ocp-benchmark -c tests/benchmark.json
     """
 
+    if config_json is None:
+        config_json = parse_options()
+
     test_subset_path = config_json.get("test_setting", None)
     test_filter = config_json.get("test_filter_setting", None)
     test_description = config_json.get("test_description", "")
     solver_setting = config_json.get("solver_setting", None)
+    compare_bool = config_json.get("compare_sol", False)
 
     ## Create test_set ##
     # get problems and create test set
@@ -91,6 +95,7 @@ def main(config_json: dict):
         test_set,
         solver_set,
         results,
+        compare_sol=compare_bool,
         print_level=2,
     )
 
@@ -121,7 +126,6 @@ def main(config_json: dict):
     )
 
 if __name__ == "__main__":
-    # test_cli_input = ["-c", "tests/benchmark.json"]
-    # config_dict = parse_options(arg_list=test_cli_input)
-    config_dict = parse_options()
+    test_cli_input = ["-c", "tests/benchmark.json"]
+    config_dict = parse_options(arg_list=test_cli_input)
     main(config_dict)
