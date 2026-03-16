@@ -6,7 +6,7 @@
 
     "test_filter_setting": [
         {"has_masks": false},
-        {"has_idxs_rev_not_idxs": false}
+        {"has_slacks": false}
     ],
 
     "test_description": "Problems without masks and idxs_rev",
