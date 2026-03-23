@@ -48,13 +48,13 @@ class TestSet:
             if os.path.isdir(qp_folder_path):
                 path_dict = {
                     "qp_data_path": os.path.join(
-                        qp_folder_path, f"{qp_folder_name}.json"
+                        qp_folder_path, f"{qp_folder_name}.json.zst"
                     ),
                     "meta_data_path": os.path.join(
                         qp_folder_path, f"{qp_folder_name}_meta.json"
                     ),
                     "ref_sol_path": os.path.join(
-                        qp_folder_path, f"{qp_folder_name}_ref_sol.json"
+                        qp_folder_path, f"{qp_folder_name}_ref_sol.json.zst"
                     ),
                 }
                 yield path_dict

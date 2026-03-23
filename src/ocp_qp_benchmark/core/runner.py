@@ -12,7 +12,7 @@ from acados_template import AcadosOcpQp, AcadosOcpQpSolver, AcadosCasadiOcpQpSol
 from ocp_qp_benchmark.core.test_set import TestSet
 from ocp_qp_benchmark.core.solver_set import SolverSet
 from ocp_qp_benchmark.core.results import Results
-from ocp_qp_benchmark.utils.io import load_data
+from ocp_qp_benchmark.utils.io import decompress_and_write
 from ocp_qp_benchmark.core.supported_solvers import (
     ACADOS_OCP_QP_SOLVERS,
     ACADOS_CASADI_SOLVERS,
@@ -131,13 +131,17 @@ def run(
             initial=0,
         )
 
+    temp_qp_data = 'temp_qp_data.json'
+    temp_ref_sol = 'temp_ref_sol.json'
+
     for i, opts in enumerate(solver_set):
         solver_id = solver_set.solver_ids[i]
         if progress_bar is not None:
             progress_bar.set_description(f"Solver: {solver_id}")
 
         for json_path_dict in test_set:
-            qp = AcadosOcpQp.from_json(json_path_dict["qp_data_path"])
+            decompress_and_write(json_path_dict["qp_data_path"], temp_qp_data)
+            qp = AcadosOcpQp.from_json(temp_qp_data)
             if print_level > 1:
                 print(
                     f"Solving problem {json_path_dict['qp_data_path']} "
@@ -148,8 +152,12 @@ def run(
             if compare_sol:
                 import os
                 if os.path.exists(json_path_dict["ref_sol_path"]):
-                    ref_sol = AcadosOcpIterate.from_json(json_path_dict["ref_sol_path"])
-                    ref_sol.allclose(solver_sol)
+                    decompress_and_write(json_path_dict["ref_sol_path"], temp_ref_sol)
+                    ref_sol = AcadosOcpIterate.from_json(temp_ref_sol)
+                    if ref_sol.allclose(solver_sol):
+                        print(f"solution matches reference for problem {json_path_dict['qp_data_path']}")
+                    else:
+                        print(f"!!!solution does NOT match reference for problem {json_path_dict['qp_data_path']}!!!")
                 else:
                     print(f"!!!!Reference solution not found at {json_path_dict['ref_sol_path']}!!!!")
 
