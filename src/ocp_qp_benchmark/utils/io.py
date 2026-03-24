@@ -17,8 +17,9 @@ def load_data(json_path: str) -> dict:
     with open(json_path, "r") as f:
         return json.load(f)
 
-def decompress_and_write(zstd_path, temp_json) -> None:
-    """Decompress a zstd compressed json file and write the decompressed json to the temp file.
+def decompress(zstd_path) -> None:
+    """
+    Decompress a zstd compressed json file and write the decompressed json to the temp file.
 
     Args:
         zstd_path: Path to the zstd compressed json file.
@@ -27,5 +28,4 @@ def decompress_and_write(zstd_path, temp_json) -> None:
     with open(zstd_path, 'rb') as f:
         decompressed_data = dctx.decompress(f.read())
         json_data = json.loads(decompressed_data.decode('utf-8'))
-    with open(temp_json, 'w') as f:
-        json.dump(json_data, f, indent=4)
+    return json_data
