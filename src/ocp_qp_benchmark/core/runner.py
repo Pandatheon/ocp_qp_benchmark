@@ -152,8 +152,10 @@ def run(
 
                 if compare_sol:
                     import os
+                    import json
                     ref_path = json_path_dict["ref_sol_path"]
                     data_path = json_path_dict["qp_data_path"]
+                    meta_path = json_path_dict["meta_data_path"]
 
                     if os.path.exists(ref_path):
                         # Load and decompress reference solution
@@ -164,7 +166,12 @@ def run(
                         if ref_sol.allclose(solver_sol, atol=5e-5, rtol=5e-5):
                             logging.info(f"\033[92m[MATCH]\033[0m Solution matches reference for problem: {data_path}")
                         else:
-                            logging.warning(f"\033[91m[MISMATCH]\033[0m Solution mismatch for problem: {data_path}")
+                            with open(meta_path, "r") as f:
+                                meta_dict = json.load(f)
+                            if meta_dict.get("definiteness", "") == "positive definite":
+                                logging.warning(f"\033[91m[MISMATCH]\033[0m Solution mismatch for problem: {data_path}")
+                            else:
+                                logging.warning(f"\033[93m[MISMATCH]\033[0m Solution mismatch for indefinite/semidefinite problem: {data_path} (may be expected)")
                     else:
                         logging.error(f"\033[93m[MISSING REF]\033[0m Reference solution not found at: {ref_path}")
 

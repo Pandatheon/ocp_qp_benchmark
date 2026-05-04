@@ -121,26 +121,11 @@ class BenchSetManager:
         Returns:
             Reference solution iterate, or None if solve failed.
         """
-        # very ad-hoc: only use IPOPT for indfinite problems without slacks and masks
-        # TODO:functionality for slack in AcadosCasadiOcpQp needs to be supported
-        if meta_dict["definiteness"] == "indefinite" and not meta_dict["has_slacks"] and not meta_dict["has_masks"]:
-            qp_solver = AcadosCasadiOcpQpSolver(qp, solver='ipopt', solver_opts={"print_time": False, "ipopt": {"print_level": 0}})
-            status = qp_solver.solve()
-            if status == 0:
-                print("Reference solution found.")
-                ref_sol: AcadosOcpIterate = qp_solver.get_iterate()
-        else:
-            opts = AcadosOcpQpOptions()
-            opts.qp_solver = "PARTIAL_CONDENSING_HPIPM"
-            opts.print_level = 0
-            solver = AcadosOcpQpSolver(qp, opts)
-            status = solver.solve()
-            if status == 0:
-                print("Reference solution found.")
-                ref_sol: AcadosOcpIterate = solver.get_iterate()
-            else:
-                print("Warning: Reference solution not found, status:", status)
-                ref_sol = None
+        qp_solver = AcadosCasadiOcpQpSolver(qp, solver='ipopt', solver_opts={"print_time": False, "ipopt": {"print_level": 0}})
+        status = qp_solver.solve()
+        if status == 0:
+            print("Reference solution found.")
+            ref_sol: AcadosOcpIterate = qp_solver.get_iterate()
         return ref_sol
 
     def _generate_problem_set(self, qp, new_name, json_file, added_problems):
