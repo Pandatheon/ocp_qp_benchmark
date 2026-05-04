@@ -32,14 +32,16 @@ def main():
     parser.add_argument(
         "--name",
         "-n",
-        default="qps",
+        default=None,
         help="Name of the problem set to be added (default: qps)",
     )
 
     args = parser.parse_args()
+    folder_path = Path(args.folder_path)
+    name = args.name if args.name is not None else folder_path.name
 
     manager = BenchSetManager()
-    manager.add_problems_from_json_folder(Path(args.folder_path), args.name)
+    manager.add_problems_from_json_folder(Path(args.folder_path), name)
 
 
 if __name__ == "__main__":
