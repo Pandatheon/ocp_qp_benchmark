@@ -1,12 +1,10 @@
 {
 
     "test_setting":[
-        "random_qp",
-        "pendulum_sqp_qps",
         "pend_idxs_rev_min",
-        "quadrotor_nav_acados",
         "qps",
-        "epfl_racing_hpipm_failures"
+        "random_qp",
+        "pendulum_indefinite_qps"
     ],
 
     "test_filter_setting": [],
@@ -15,12 +13,16 @@
 
     "solver_setting": [
         {
+            "solver": "PARTIAL_CONDENSING_HPIPM",
+            "opts": {}
+        },
+        {
             "solver": "IPOPT",
-            "opts": {"print_time": false, "ipopt": {"print_level": 0}}
+            "opts": {"print_time": false, "ipopt": {"print_level": 0, "sb": "yes"}}
         }
     ],
 
     "compare_sol": true,
 
-    "eval_solver_names":[]
+    "eval_solver_names":["IPOPT"]
 }
