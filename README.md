@@ -15,44 +15,23 @@ pip install -e .
 
 ### Run benchmark
 
+In order to run the benchmark, a configuration JSON file is needed, please refer to `tests/benchmark.json`.
+
 ```bash
-ocp-benchmark
+ocp-benchmark my_config.json
 ```
+The result will be saved as `csv` file.
 
 ### Add problems to dataset
 
 ```bash
-add-problems /path/to/json/folder --name my_dataset
+add-problems /path/to/json/folder --name my_dataset_name
 ```
+The dataset will be added into `ocp_qp_dataset_collection`, each problem folder will contain `meta.json`, `ref_sol.json.zst`, `data.json.zst`.
 
 ### Python API
 
-```python
-from acados_template import AcadosOcpQpOptions
-from ocp_qp_benchmark.core import TestSet, SolverSet, Results, run, create_solver_options
-from ocp_qp_benchmark.visualization import plot_metric, generate_labels
-
-# Create solver configurations
-solvers = [
-    create_solver_options("FULL_CONDENSING_HPIPM"),
-    create_solver_options("FULL_CONDENSING_HPIPM", tol_stat=1e-10),  # Custom tolerance
-    create_solver_options("FULL_CONDENSING_DAQP"),
-]
-
-# Create test set from problem folders
-test_set = TestSet(qp_folder_paths=["ocp_qp_dataset_collection/random_qp/prob_0"])
-
-# Run benchmark
-solver_set = SolverSet(solvers)
-results = Results(file_path="results/results.csv", test_set=test_set)
-run(test_set, solver_set, results)
-
-# Generate labels (auto-detects differing options)
-labels = generate_labels(solvers)
-
-# Plot results
-plot_metric(metric="runtime_fair", df=results.df, test_set=test_set, labels=labels)
-```
+Please check the `src/ocp_qp_benchmark/cli/main.py`
 
 ## Supported Solvers
 
@@ -62,3 +41,7 @@ plot_metric(metric="runtime_fair", df=results.df, test_set=test_set, labels=labe
 - `FULL_CONDENSING_DAQP`
 - `PARTIAL_CONDENSING_OSQP`
 - `PARTIAL_CONDENSING_CLARABEL`
+
+## Reference Solver (for reference solution)
+
+ - `IPOPT` 
