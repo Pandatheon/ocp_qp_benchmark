@@ -3,7 +3,7 @@
 import os
 from typing import Any, Callable, Dict
 
-from ocp_qp_benchmark.utils.io import load_meta_data
+from ocp_qp_benchmark.utils.io import load_data
 
 
 class TestSet:
@@ -48,13 +48,13 @@ class TestSet:
             if os.path.isdir(qp_folder_path):
                 path_dict = {
                     "qp_data_path": os.path.join(
-                        qp_folder_path, f"{qp_folder_name}.json"
+                        qp_folder_path, f"{qp_folder_name}.json.zst"
                     ),
                     "meta_data_path": os.path.join(
                         qp_folder_path, f"{qp_folder_name}_meta.json"
                     ),
                     "ref_sol_path": os.path.join(
-                        qp_folder_path, f"{qp_folder_name}_ref_sol.json"
+                        qp_folder_path, f"{qp_folder_name}_ref_sol.json.zst"
                     ),
                 }
                 yield path_dict
@@ -63,21 +63,25 @@ class TestSet:
         """Count the number of problems in the test set."""
         return len(self.qp_folder_paths)
 
-    def filter_problems(self, opts : dict = None):
+    def filter_problems(self, opts : dict = None, verbose: bool = True) -> None:
         """
         Filter problems based on options.
         Args:
             opts: Dictionary of options to filter by (e.g., {"has_slacks": True})
         """
-        filtered_paths = []
         if opts is None:
             return self.qp_folder_paths
-        for qp_folder_path in self.qp_folder_paths:
-            if os.path.isdir(qp_folder_path):
-                meta_data = load_meta_data(qp_folder_path)
-                for key, value in opts.items():
-                    if meta_data.get(key) != value:
-                        break
-                    else:
-                        filtered_paths.append(qp_folder_path)
+        target_conditions = {k: v for opt in opts for k, v in opt.items()}
+        filtered_paths = []
+        for path in self:
+            meta_data = load_data(path['meta_data_path'])
+            is_fully_matched = all(
+                meta_data.get(k) == v for k, v in target_conditions.items()
+            )
+            if is_fully_matched:
+                filtered_paths.append(os.path.dirname(path['meta_data_path']))
         self.qp_folder_paths = filtered_paths
+        if verbose:
+            print("Filtered QP problems:")
+            for folder in filtered_paths:
+                print(f"  - {folder}")

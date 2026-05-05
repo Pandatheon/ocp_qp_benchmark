@@ -5,19 +5,27 @@ from time import perf_counter
 
 import numpy as np
 from tqdm import tqdm
+from tqdm.contrib.logging import logging_redirect_tqdm
+from typing import Union
+import logging
 
-from acados_template import AcadosOcpQp, AcadosOcpQpSolver, AcadosOcpQpOptions
+from acados_template import AcadosOcpQp, AcadosOcpQpSolver, AcadosCasadiOcpQpSolver, AcadosOcpQpOptions, AcadosOcpIterate
 
 from ocp_qp_benchmark.core.test_set import TestSet
 from ocp_qp_benchmark.core.solver_set import SolverSet
 from ocp_qp_benchmark.core.results import Results
+from ocp_qp_benchmark.utils.io import decompress
+from ocp_qp_benchmark.core.supported_solvers import (
+    ACADOS_OCP_QP_SOLVERS,
+    ACADOS_CASADI_SOLVERS,
+    EXTERNAL_SOLVERS,
+)
 
 
 def solve_problem(
     qp: AcadosOcpQp,
-    opts: AcadosOcpQpOptions,
+    opts: Union[AcadosOcpQpOptions, dict],
     repeat_times: int = 1,
-    print_level: int = 0,
 ) -> dict:
     """Solve a single QP problem with the given solver options.
 
@@ -30,6 +38,9 @@ def solve_problem(
     Returns:
         Dictionary containing solve results (status, iterations, runtimes, cost).
     """
+    if not isinstance(opts, AcadosOcpQpOptions) and not isinstance(opts, dict):
+        raise ValueError('Unknown solver options type, expected AcadosOcpQpOptions or dict')
+
     ctx = {}
     runtime_external = 1e50
 
@@ -38,17 +49,24 @@ def solve_problem(
 
     # Copy options to avoid mutation and set print level
     solver_opts = deepcopy(opts)
-    solver_opts.print_level = print_level - 1
+    # solver_opts.print_level = print_level - 1
 
     for _ in range(repeat_times):
         try:
-            qp_solver = AcadosOcpQpSolver(qp, solver_opts)
+            if solver_opts.get('qp_solver') in ACADOS_OCP_QP_SOLVERS:
+                qp_solver = AcadosOcpQpSolver(qp, solver_opts)
+            elif solver_opts.get('qp_solver') in ACADOS_CASADI_SOLVERS:
+                casadi_opts = solver_opts.copy()
+                casadi_opts.pop('qp_solver')
+                qp_solver = AcadosCasadiOcpQpSolver(qp,
+                                                    solver=solver_opts.get('qp_solver').lower(),
+                                                    solver_opts=casadi_opts)
+            elif solver_opts.get('qp_solver') in EXTERNAL_SOLVERS:
+                raise NotImplementedError(f"External solvers not implemented yet")
+            else:
+                raise ValueError(f"Unknown solver: {solver_opts.get('qp_solver')}")
         except Exception as e:
-            if print_level > 0:
-                print(
-                    f"Error initializing solver {opts.qp_solver} "
-                    f"got error:\n {e}"
-                )
+            logging.error(f"Error initializing solver {solver_opts.get('qp_solver')} got error:\n {e}")
             ctx["status"] = -1  # ACADOS_UNKNOWN
             ctx["iterations"] = -1
             ctx["runtime_external"] = -1
@@ -59,15 +77,20 @@ def solve_problem(
 
         start_time = perf_counter()
         status = qp_solver.solve()
-        if print_level > 0 and status != 0:
-            print(f"Solver {opts.qp_solver} failed with status {status}")
+        if status != 0:
+            logging.warning(f"Solver {solver_opts.get('qp_solver')} failed with status {status}")
+
         runtime_external = min(runtime_external, perf_counter() - start_time)
         iter = qp_solver.get_stats("iter")
         runtime_internal = qp_solver.get_stats("time_tot")
-        runtime_fair = (
-            qp_solver.get_stats("time_qp_xcond")
-            + qp_solver.get_stats("time_qp_solver_call")
-        )
+        if solver_opts.get('qp_solver') in ACADOS_OCP_QP_SOLVERS:
+            runtime_fair = (
+                qp_solver.get_stats("time_qp_xcond")
+                + qp_solver.get_stats("time_qp_solver_call")
+            )
+        else:
+            runtime_fair = runtime_external
+        solver_sol = qp_solver.get_iterate()
         # TODO: reset() needed
         qp_solver = None
 
@@ -79,13 +102,14 @@ def solve_problem(
     # TODO: get_cost() needs to be called after solve()
     ctx["cost"] = 0.0
 
-    return ctx
+    return ctx, solver_sol
 
 
 def run(
     test_set: TestSet,
     solver_set: SolverSet,
     results: Results,
+    compare_sol: bool = True,
     print_level: int = 1,
 ) -> None:
     """Run a given test set and store results.
@@ -96,6 +120,13 @@ def run(
         results: Results object to store benchmark results.
         print_level: Verbosity level.
     """
+    if print_level == 0:
+        logging.getLogger().setLevel(logging.ERROR)
+    elif print_level == 1:
+        logging.getLogger().setLevel(logging.WARNING)
+    else:
+        logging.getLogger().setLevel(logging.INFO)
+
     progress_bar = None
     if print_level > 0:
         nb_problems = test_set.count_problems()
@@ -104,29 +135,55 @@ def run(
             total=nb_problems * nb_solvers,
             initial=0,
         )
+    with logging_redirect_tqdm():
+        for i, opts in enumerate(solver_set):
+            solver_id = solver_set.solver_ids[i]
+            if progress_bar is not None:
+                progress_bar.set_description(f"Solver: {solver_id}")
 
-    for i, opts in enumerate(solver_set):
-        solver_id = solver_set.solver_ids[i]
-        if progress_bar is not None:
-            progress_bar.set_description(f"Solver: {solver_id}")
-
-        for json_path_dict in test_set:
-            qp = AcadosOcpQp.from_json(json_path_dict["qp_data_path"])
-            if print_level > 1:
-                print(
+            for json_path_dict in test_set:
+                json_data = decompress(json_path_dict["qp_data_path"])
+                qp = AcadosOcpQp.from_json(json_data=json_data)
+                logging.info(
                     f"Solving problem {json_path_dict['qp_data_path']} "
                     f"with solver {solver_id}"
                 )
-            ctx = solve_problem(qp, opts, print_level=print_level - 1)
-            results.update(
-                json_path_dict["meta_data_path"],
-                solver_id,
-                ctx,
-            )
-            if progress_bar is not None:
-                progress_bar.update(1)
+                ctx, solver_sol = solve_problem(qp, opts)
 
-        results.write()
+                if compare_sol:
+                    import os
+                    import json
+                    ref_path = json_path_dict["ref_sol_path"]
+                    data_path = json_path_dict["qp_data_path"]
+                    meta_path = json_path_dict["meta_data_path"]
+
+                    if os.path.exists(ref_path):
+                        # Load and decompress reference solution
+                        json_data = decompress(ref_path)
+                        ref_sol = AcadosOcpIterate.from_json(json_data=json_data)
+
+                        # Verify solver solution against reference
+                        if ref_sol.allclose(solver_sol, atol=5e-5, rtol=5e-5):
+                            logging.info(f"\033[92m[MATCH]\033[0m Solution matches reference for problem: {data_path}")
+                        else:
+                            with open(meta_path, "r") as f:
+                                meta_dict = json.load(f)
+                            if meta_dict.get("definiteness", "") == "positive definite":
+                                logging.warning(f"\033[91m[MISMATCH]\033[0m Solution mismatch for problem: {data_path}")
+                            else:
+                                logging.warning(f"\033[93m[MISMATCH]\033[0m Solution mismatch for indefinite/semidefinite problem: {data_path} (may be expected)")
+                    else:
+                        logging.error(f"\033[93m[MISSING REF]\033[0m Reference solution not found at: {ref_path}")
+
+                results.update(
+                    json_path_dict["meta_data_path"],
+                    solver_id,
+                    ctx,
+                )
+                if progress_bar is not None:
+                    progress_bar.update(1)
+
+            results.write()
 
     if progress_bar is not None:
         progress_bar.close()

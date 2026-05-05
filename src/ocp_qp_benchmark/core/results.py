@@ -43,6 +43,10 @@ class Results:
             else pandas.read_parquet
         )
         df = read_func(file_path)
+        df.columns = df.columns.str.strip()
+        for col in df.select_dtypes(include=['object']):
+            df[col] = df[col].astype(str).str.strip()
+
         return df
 
     def __init__(
@@ -83,8 +87,12 @@ class Results:
         if file_path is not None:
             file_path = Path(file_path)
             df_from_file = Results.read_from_file(file_path)
+        if file_path is not None:
+            file_path = Path(file_path)
+            df_from_file = Results.read_from_file(file_path)
             if df_from_file is not None:
-                df = pandas.concat([df, df_from_file])
+                frames = [d for d in [df, df_from_file] if not d.empty]
+                df = pandas.concat(frames) if frames else df
             else:
                 import os
 
@@ -119,7 +127,8 @@ class Results:
         """
         path_check = path or self.file_path
         save_path = Path(path_check)
-        save_df = pandas.concat([self.df, self.__complementary_df])
+        frames = [d for d in [self.df, self.__complementary_df] if not d.empty]
+        save_df = pandas.concat(frames) if frames else self.df
         save_df = save_df.sort_values(by=["problem", "solver"])
         if save_path.suffix == ".csv":
             save_df.to_csv(save_path, index=False)
@@ -164,7 +173,11 @@ class Results:
                 }
             ]
         )
-        self.df = pandas.concat([self.df, new_row], ignore_index=True)
+        if self.df.empty:
+            self.df = new_row
+        else:
+            new_row_clean = new_row.dropna(axis=1, how="all")
+            self.df = pandas.concat([self.df, new_row_clean], ignore_index=True)
 
     def get_solver_ids(self) -> list[str]:
         """Get list of unique solver IDs in results."""

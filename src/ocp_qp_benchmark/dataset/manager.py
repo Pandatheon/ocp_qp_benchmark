@@ -1,7 +1,7 @@
 """Benchmark dataset manager."""
 
 import json
-import shutil
+import zstandard as zstd
 from pathlib import Path
 
 from acados_template import (
@@ -9,8 +9,10 @@ from acados_template import (
     AcadosOcpQpSolver,
     AcadosOcpIterate,
     AcadosOcpQpOptions,
+    AcadosCasadiOcpQpSolver,
 )
 
+import numpy as np
 
 class BenchSetManager:
     """Manager for benchmark dataset collections."""
@@ -78,32 +80,8 @@ class BenchSetManager:
                     f"Error loading {json_file}:\n {e}\nSkipping this file."
                 )
                 continue
-
-            # Generate meta data and reference solution
-            meta_dict = self.generate_meta_json(
-                qp, name=f"{new_name}_{json_file.name}"
-            )
-            ref_sol = self.generate_reference_solution(qp)
-
-            # Create new folder
-            new_folder_path = self.dataset_path / json_file.stem
-            new_folder_path.mkdir()
-
-            # Copy json file
-            shutil.copy2(json_file, new_folder_path / json_file.name)
-
-            # Save meta json
-            (new_folder_path / f"{json_file.stem}_meta.json").write_text(
-                json.dumps(meta_dict, indent=4)
-            )
-
-            if ref_sol is not None:
-                # Save reference solution
-                (new_folder_path / f"{json_file.stem}_ref_sol.json").write_text(
-                    ref_sol.to_json()
-                )
-            print(f"Added problem from {json_file} to {new_folder_path}")
-            added_problems.append(str(new_folder_path))
+            # Generate problem set
+            self._generate_problem_set(qp, new_name, json_file, added_problems)
 
         return added_problems
 
@@ -123,10 +101,17 @@ class BenchSetManager:
         meta_json["has_slacks"] = qp.has_slacks()
         meta_json["has_masks"] = qp.has_masks()
         meta_json["has_idxs_rev_not_idxs"] = qp.has_idxs_rev_not_idxs()
+
+        min_eigv = qp.qp_diagnostics()['min_eigv_global']
+        if np.isclose(min_eigv, 0):
+            meta_json["definiteness"] = "positive semidefinite"
+        else:
+            meta_json["definiteness"] = "indefinite" if min_eigv < 0 else "positive definite"
+
         return meta_json
 
     def generate_reference_solution(
-        self, qp: AcadosOcpQp
+        self, qp: AcadosOcpQp, meta_dict: dict
     ) -> AcadosOcpIterate:
         """Generate a reference solution for a QP problem.
 
@@ -136,18 +121,41 @@ class BenchSetManager:
         Returns:
             Reference solution iterate, or None if solve failed.
         """
-        opts = AcadosOcpQpOptions()
-        opts.qp_solver = "PARTIAL_CONDENSING_HPIPM"
-        opts.print_level = 0
-        solver = AcadosOcpQpSolver(qp, opts)
-        status = solver.solve()
+        qp_solver = AcadosCasadiOcpQpSolver(qp, solver='ipopt', solver_opts={"print_time": False, "ipopt": {"print_level": 0}})
+        status = qp_solver.solve()
         if status == 0:
             print("Reference solution found.")
-            ref_sol: AcadosOcpIterate = solver.get_iterate()
-        else:
-            print("Warning: Reference solution not found, status:", status)
-            ref_sol = None
+            ref_sol: AcadosOcpIterate = qp_solver.get_iterate()
         return ref_sol
+
+    def _generate_problem_set(self, qp, new_name, json_file, added_problems):
+        cctx = zstd.ZstdCompressor()
+        # Generate meta data and reference solution
+        meta_dict = self.generate_meta_json(
+            qp, name=f"{new_name}_{json_file.name}"
+        )
+        ref_sol = self.generate_reference_solution(qp, meta_dict)
+
+        # Create new folder
+        new_folder_path = self.dataset_path / json_file.stem
+        new_folder_path.mkdir()
+
+        original_data_bytes = json_file.read_bytes()
+        compressed_data = cctx.compress(original_data_bytes)
+        (new_folder_path / f"{json_file.name}.zst").write_bytes(compressed_data)
+
+        # Save meta json
+        (new_folder_path / f"{json_file.stem}_meta.json").write_text(
+            json.dumps(meta_dict, indent=4), encoding='utf-8'
+        )
+
+        if ref_sol is not None:
+            # Save reference solution
+            ref_sol_json_str = ref_sol.to_json()
+            compressed_ref_sol = cctx.compress(ref_sol_json_str.encode('utf-8'))
+            (new_folder_path / f"{json_file.stem}_ref_sol.json.zst").write_bytes(compressed_ref_sol)
+        print(f"Added and compressed problem from {json_file} to {new_folder_path}")
+        added_problems.append(str(new_folder_path))
 
     def sanitize_problem_set(self):
         """Run through all problems, check for sanity, generate missing meta data."""
