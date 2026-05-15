@@ -42,7 +42,7 @@ def main(problem_path, qp_solver_name):
 
 if __name__ == "__main__":
     # Assign the path to the specific problem
-    problem_path = "/ocp_qp_benchmark/ocp_qp_dataset_collection/random_qp/prob_0/prob_0.json.zst"
+    problem_path = "ocp_qp_dataset_collection/random_qp/prob_0/prob_0.json.zst"
 
     # Assign the specific solver you want to test
     qp_sovler_name = "PARTIAL_CONDENSING_HPIPM"
