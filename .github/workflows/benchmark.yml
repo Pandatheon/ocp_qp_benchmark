@@ -68,3 +68,4 @@ jobs:
         run: |
           echo "Testing IPOPT as reference solver..."
           ocp-benchmark -c tests/ref_test.json
+          python  tests/test_single_problem.py
