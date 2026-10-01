@@ -4,7 +4,7 @@ import inspect
 from typing import Union
 
 from acados_template import AcadosOcpQpOptions
-from acados_template.acados_code_gen_opts import AcadosCodeGenOpts
+from acados_template.acados_code_gen_options import AcadosCodeGenOptions
 from ocp_qp_benchmark.core.supported_solvers import (
     ACADOS_OCP_QP_SOLVERS,
     ACADOS_CASADI_SOLVERS,
@@ -24,7 +24,7 @@ class SolverSet:
         self.solver_list = solver_list
         self.solvers = []
         self.solver_ids = []
-        with open(AcadosCodeGenOpts().acados_lib_path + '/link_libs.json', 'r') as f:
+        with open(AcadosCodeGenOptions().acados_lib_path + '/link_libs.json', 'r') as f:
             self.link_lib_dict = json.load(f)
         self.link_lib_dict['hpipm'] = 'hpipm'  # hpipm is default and not in link_libs.json
 

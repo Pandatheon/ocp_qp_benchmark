@@ -13,25 +13,43 @@ pip install -e .
 
 ## Usage
 
+Run the commands from the repository root, since the dataset collection `ocp_qp_dataset_collection/` is resolved relative to the working directory.
+
 ### Run benchmark
 
-In order to run the benchmark, a configuration JSON file is needed, please refer to `tests/benchmark.json`.
-
 ```bash
-ocp-benchmark my_config.json
+ocp-benchmark -c tests/benchmark.json
 ```
-The result will be saved as `csv` file.
+
+The configuration JSON has the following keys (see [tests/benchmark.json](tests/benchmark.json) for an example):
+
+| Key | Description |
+| --- | --- |
+| `test_setting` | Dataset names under `ocp_qp_dataset_collection/` to run, e.g. `["random_qp"]` |
+| `test_filter_setting` | Keep only problems whose `meta.json` matches, e.g. `[{"has_slacks": false}]` |
+| `test_description` | Label for the test set, used in plots |
+| `solver_setting` | List of `{"solver": <name>, "opts": {...}}`; the same solver can appear with different options |
+| `eval_solver_names` | Subset of solvers to plot in a second, focused figure |
+| `metric` | Metric to plot (default: `runtime_fair`) |
+| `compare_sol` | Compare solutions against the reference solution (default: `false`) |
+
+Results are written to `results/qpbenchmark_results.csv` and plots to `figures/`.
 
 ### Add problems to dataset
 
 ```bash
 add-problems /path/to/json/folder --name my_dataset_name
 ```
-The dataset will be added into `ocp_qp_dataset_collection`, each problem folder will contain `meta.json`, `ref_sol.json.zst`, `data.json.zst`.
+
+Each `.json` file in the folder must be loadable by `AcadosOcpQp.from_json()`. The problems are added to `ocp_qp_dataset_collection/my_dataset_name/` (default name: the folder name). Each problem gets:
+
+- `<problem>.json.zst`: compressed QP data
+- `<problem>_meta.json`: problem properties (`N`, `has_slacks`, `has_masks`, `definiteness`, ...), used by `test_filter_setting`
+- `<problem>_ref_sol.json.zst`: reference solution from IPOPT (omitted if IPOPT fails)
 
 ### Python API
 
-Please check the `src/ocp_qp_benchmark/cli/main.py`
+See [src/ocp_qp_benchmark/cli/main.py](src/ocp_qp_benchmark/cli/main.py) for an example of using `TestSet`, `SolverSet`, `Results` and `run` directly.
 
 ## Supported Solvers
 
@@ -41,7 +59,4 @@ Please check the `src/ocp_qp_benchmark/cli/main.py`
 - `FULL_CONDENSING_DAQP`
 - `PARTIAL_CONDENSING_OSQP`
 - `PARTIAL_CONDENSING_CLARABEL`
-
-## Reference Solver (for reference solution)
-
- - `IPOPT` 
+- `IPOPT` (via CasADi; also used to generate reference solutions)
