@@ -3,7 +3,7 @@
 import inspect
 from typing import Union
 
-from acados_template import AcadosOcpQpOptions
+from acados_template import AcadosOcpQpOptions, AcadosOcpQpHpipmOptions
 from acados_template.acados_code_gen_options import AcadosCodeGenOptions
 from ocp_qp_benchmark.core.external import (
     ExternalQp,
@@ -59,7 +59,10 @@ class SolverSet:
         Add an acados OCP QP solver configuration to the set.
         '''
         if self.check_compile(name):
-            solver_opts = AcadosOcpQpOptions()
+            if 'HPIPM' in name:
+                solver_opts = AcadosOcpQpHpipmOptions()
+            else:
+                solver_opts = AcadosOcpQpOptions()
             solver_opts.qp_solver = name
             solver_opts.iter_max = opts.get("iter_max", 1000)
             for key, value in opts.items():
@@ -115,8 +118,7 @@ class SolverSet:
         parts = [opts.get('qp_solver')]
 
         if isinstance(opts, AcadosOcpQpOptions):
-            # Add non-default options to the ID
-            default_opts = AcadosOcpQpOptions()
+            default_opts = type(opts)()
 
             # Get all properties of the class
             props = [name for name, value in inspect.getmembers(type(opts)) if isinstance(value, property)]
