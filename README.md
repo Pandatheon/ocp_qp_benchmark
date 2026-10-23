@@ -33,11 +33,16 @@ Configuration keys (example: [tests/benchmark.json](tests/benchmark.json)):
 | `test_setting` | Datasets in `ocp_qp_dataset_collection/`, e.g. `["random_qp"]` |
 | `test_filter_setting` | Filters on the problem `meta.json`, e.g. `[{"has_slacks": false}]` |
 | `test_description` | Label used in plots |
-| `solver_setting` | List of `{"solver": <name>, "opts": {...}}`; a solver may appear several times with different options. External solvers also need `qp_class` and `solver_class`, see [Connect your own solver](#connect-your-own-solver) |
+| `solver_setting` | List of `{"solver": <name>, "opts": {...}, "label": <optional display label>}`; a solver may appear several times with different options. Labels are shown in plots and status tables; without one, the solver ID is used. External solvers also need `qp_class` and `solver_class`, see [Connect your own solver](#connect-your-own-solver) |
 | `compare_sol` | Compare solutions with the reference solution (default: `false`) |
 
-The `run` command only runs solvers and writes results. Plotting can be repeated later
-from the saved file, without rerunning the benchmark:
+The `run` command runs solvers and writes results.
+Evaluation can be performed later from the results file, without rerunning the benchmark.
+
+When plotting, a problem with no reference solution is classified as infeasible only
+if every solver in the results file returned a nonzero status. Those nonzero results
+count as solved for that problem. A status-0 result keeps the problem classified as
+solvable.
 
 ```bash
 ocp-benchmark plot --results results/qpbenchmark_results.csv
@@ -51,6 +56,15 @@ If `--solver-ids` is omitted, all solver IDs in the results file are plotted. ID
 match the `solver` column exactly. The default metric is `runtime_fair`; the default
 plot path is `figures/<results-file>_<metric>.pdf`.
 
+Create a Markdown table counting each status returned by each solver:
+
+```bash
+ocp-benchmark status-table --results results/qpbenchmark_results.csv
+```
+
+The table is saved as `<results-file>_status_table.md` beside the results file. Set
+`--output` to choose another path.
+
 ### Add problems to dataset
 
 ```bash
@@ -60,7 +74,7 @@ add-problems /path/to/json/folder --name my_dataset_name
 Each `.json` file must be loadable by `AcadosOcpQp.from_json()`. Problems are added to `ocp_qp_dataset_collection/my_dataset_name/` (default name: the folder name), each with:
 
 - `<problem>.json.zst`: compressed QP data
-- `<problem>_meta.json`: problem properties (`N`, `has_slacks`, `has_masks`, `definiteness`, ...), used by `test_filter_setting`
+- `<problem>_meta.json`: problem properties (`N`, `has_slacks`, `has_masks`, `definiteness`, `has_reference_solution`, ...), used by `test_filter_setting`
 - `<problem>_ref_sol.json.zst`: IPOPT reference solution (omitted if IPOPT fails)
 
 ### Python API
